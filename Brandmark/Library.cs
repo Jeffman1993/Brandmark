@@ -13,18 +13,18 @@ namespace Brandmark
 {
     class Library
     {
-        public static string bookmarkLoc = null;
         private static string bookmarkContents;
         private static JObject bookmarksJSON;
-        public static List<Bookmark> bookmarks = new List<Bookmark>();
+        private static List<Bookmark> bookmarks = new List<Bookmark>();
 
-        public static string chromeDirectory = $"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\";
-        public string fireQuery = "SELECT moz_bookmarks.title, moz_places.url FROM moz_bookmarks JOIN moz_places ON moz_bookmarks.fk = moz_places.id where parent = 3;";
+        private static string userProfileDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        private static string chromeDirectory = $"{userProfileDir}\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\";
+        private static string fireDirectory = $"{userProfileDir}\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\lgr8vzne.default\\";
 
 
         public static List<Bookmark> getChromeBookmarks()
         {
-            bookmarkLoc = chromeDirectory + "Bookmarks";
+            string bookmarkLoc = chromeDirectory + "Bookmarks";
 
             bookmarkContents = File.ReadAllText(bookmarkLoc);
 
@@ -39,6 +39,31 @@ namespace Brandmark
                     name = (string)bookmark["name"],
                     url = (string)bookmark["url"],
                     icon = getChromeFavicon((string)bookmark["url"])
+                };
+
+                bookmarks.Add(bmark);
+            }
+
+            return bookmarks;
+        }
+
+        public static List<Bookmark> getFireBookmarks()
+        {
+            List<Bookmark> bookmarks = new List<Bookmark>();
+            string bookmarkLoc = fireDirectory + "places.sqlite";
+            const string query = "SELECT moz_bookmarks.title, moz_places.url FROM moz_bookmarks JOIN moz_places ON moz_bookmarks.fk = moz_places.id where parent = 3;";
+
+            DataTable dt = SqliteQuery(bookmarkLoc, query);
+
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                var row = dt.Rows[i];
+
+                Bookmark bmark = new Bookmark()
+                {
+                    name = row["title"] as string,
+                    url = row["url"] as string
+                    //icon = Image.FromStream(new MemoryStream())
                 };
 
                 bookmarks.Add(bmark);
@@ -66,7 +91,7 @@ namespace Brandmark
                 ad = new SQLiteDataAdapter(cmd);
                 ad.Fill(dt);
             }
-            catch(SQLiteException ex)
+            catch (SQLiteException ex)
             {
 
             }
@@ -79,13 +104,41 @@ namespace Brandmark
 
             if (dt.Rows.Count == 1)
             {
-                MemoryStream ms = new MemoryStream((byte[]) dt.Rows[0]["image_data"]);
+                MemoryStream ms = new MemoryStream((byte[])dt.Rows[0]["image_data"]);
                 favicon = Image.FromStream(ms);
                 ms.Dispose();
                 ms.Close();
             }
 
             return favicon;
+        }
+
+        private static DataTable SqliteQuery(string dbPath, string query)
+        {
+            var sqlite = new SQLiteConnection($"Data Source={dbPath}");
+
+            SQLiteDataAdapter ad;
+            DataTable dt = new DataTable();
+
+            try
+            {
+                SQLiteCommand cmd;
+                sqlite.Open();
+                cmd = sqlite.CreateCommand();
+                cmd.CommandText = query;
+                ad = new SQLiteDataAdapter(cmd);
+                ad.Fill(dt);
+            }
+            catch (SQLiteException ex)
+            {
+
+            }
+            finally
+            {
+                sqlite.Close();
+            }
+
+            return dt;
         }
     }
 }

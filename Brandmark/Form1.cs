@@ -28,7 +28,9 @@ namespace Brandmark
             dGrid.RowHeadersVisible = false;
             dGrid.LostFocus += delegate { this.Hide(); isShown = false; };
 
-            bookmarks = Library.getChromeBookmarks();
+            //bookmarks = Library.getChromeBookmarks();
+            bookmarks = Library.getFireBookmarks();
+
             popGrid();
 
             hk = new Hotkey();
